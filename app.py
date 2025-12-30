@@ -1,47 +1,62 @@
-from flask import Flask  #lightweight  Framework
-import pandas as pd #dataframe work readinf csv rowcoulmb
+from flask import Flask,request,render_template #lightweight
+import pandas as pd #dataframework for reading files
 import google.generativeai as genai 
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
-#step call Api key model
-
+#step 1: call api key model
 load_dotenv()
 
-genai.configure(api_key = os.getenv("GOOGLE_API_KEY"))
-model= genai.GenerativeModel("gemini-2.5-flash")
+app=Flask(__name__) #application starts here
 
-df = pd.read_csv("qa_data (1).csv")
+#configure model
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+model=genai.GenerativeModel("gemini-2.5-flash")
 
-#csv into context text
-context_text = ""
+df=pd.read_csv("qa_data (1).csv")
+
+#convert cvs into context text
+context_text=""
+
 for _,row in df.iterrows():
-    context_text +=  f"Q: {row['question']}\nA: {row['answer']}\n\n"
+    context_text += f"Q: {row['question']}\nA: {row['answer']}\n\n"
 
 def ask_gemini(query):
-    prompt = f"""
-    You are Q&A assistant.
+    prompt = f""" You are a Q&A assistant. Answer only using the following context text.
+    If the answer it is not present then say: No relavant Q&A foiund.
+    Context: {context_text}
+    Question: {query}"""
 
-    Answer ONLY using the conteext below.
-    If the answer is not present, say: No relevent Q&A found.
-
-    context:
-    {context_text}
-
-    Question: {query}
-    """
     response = model.generate_content(prompt)
+    
     return response.text.strip()
 
-print("RAG Custome  Q&A Chatbot")
-print("Enter exit come outside or terminate")
+'''
+print("This is a Q&A RAG chatbot")
+print("Enter exit or quit to terminate!!")
 
-
-while True:
-    user_input = input("You: ")
-    if user_input.lower()=="exit":
-        print("Good Bye")
+while(True):
+    user_input=input("YOU: ")
+    
+    if user_input.lower() in ['exit','quit']:
+        print("GOODBYE!!")
         break
 
-    answer=ask_gemini(user_input)          
+    answer = ask_gemini(user_input)
     print(f"{answer}\n")
+
+'''
+
+#connection between frontend and backend using ROUTE
+@app.route("/",methods=["POST","GET"])
+
+def home():
+    answer = ""
+    if request.method=="POST":
+        query = request.form["query"]
+        answer = ask_gemini(query)
+    return render_template("index.html",answer=answer)
+
+#run app
+if __name__ == "__main__":
+    app.run()
